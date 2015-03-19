@@ -4,6 +4,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string>
 #include <string.h>
 #include <iostream>
 using namespace std;
@@ -12,8 +14,8 @@ using namespace std;
 
 
 
-char * car1 = "F5:5C:27:8D:8C:6B";
-char * car2 = "E0:9F:27:A7:2F:CF";
+char car1[20] = "F5:5C:27:8D:8C:6B";
+char car2[20] = "E0:9F:27:A7:2F:CF";
 
 char * cars[MAX_CARS_NUM];
 int pipes[MAX_CARS_NUM];
@@ -28,8 +30,34 @@ void initialize() {
 	cars_num = 2;
 }
 
+void control_car_raw(int car, char* cmd) {
+		if (car >=0 && car <cars_num) {
+			int fd = pipes[car];
+			write(fd, cmd, strlen(cmd));
+			usleep(100000);
+		}
+		else {
+			cout << "no such car" << endl;
+		}
+}
+
 void control_car(int car, int velocity, int accel, int lane_velocity, int lane_accel, int lane) {
-	
+		if (car >=0 && car <cars_num) {
+			int fd = pipes[car];
+//			cout << fd << endl;
+			char buffer[100];
+		
+			sprintf(buffer, "set-speed %d %d\n", velocity, accel);
+			write(fd, buffer, strlen(buffer));
+			usleep(100000);
+
+			sprintf(buffer, "change-lane %d %d %d\n", lane_velocity, lane_accel, lane);
+			write(fd, buffer, strlen(buffer));
+			usleep(100000);
+		}
+		else {
+			cout << "no such car" << endl;
+		}
 }
 
 int main(void)
@@ -45,7 +73,6 @@ int main(void)
 		mkfifo(pipe, 0666);
 
 		int pid = fork();
-		cout << pid << endl;
 
 		if (!pid) {
 			char *name[] = {
@@ -61,16 +88,30 @@ int main(void)
 		pipes[i] = fd;
 	}
 	int fd;
+
+	for (i=0; i<cars_num; i++) {
+		control_car_raw(i, "connect\n");
+		control_car_raw(i, "sdk-mode 1\n");
+	}
+
 	while(1) {
-		if (fgets(cmd, 100, stdin) != NULL) {
-			if(strcmp(cmd, "quit")==0) return 0;
-			fd = pipes[0];
-			cout << fd << endl;
-			write(fd, cmd, strlen(cmd));
-			usleep(100000);
-			fd = pipes[1];
-			cout << fd << endl;
-			write(fd, cmd, strlen(cmd));
+		cout << "-----------------" << endl;
+		cout << "-1: quit" << endl;
+		cout << "0:all, 1,2:each" << endl;
+		cout << "velocity, accel" << endl;
+		cout << "lane: velocity, accel, position" << endl;
+		cout << "> " << endl;
+		int select, vel, acc, l_vel, l_acc, l_pos;
+		cin >> select;
+		if (select==-1) return 0;
+		cin >> vel >> acc >> l_vel >> l_acc >> l_pos;
+
+		if(select == 0) {
+			for (i=0; i<cars_num; i++) {
+				control_car(i, vel, acc, l_vel, l_acc, l_pos);
+			}
+		} else {
+			control_car(select-1, vel, acc, l_vel, l_acc, l_pos);
 		}
 	}
 	
