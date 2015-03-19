@@ -103,7 +103,12 @@ int main(void)
 		cout << "> " << endl;
 		int select, vel, acc, l_vel, l_acc, l_pos;
 		cin >> select;
-		if (select==-1) return 0;
+		if (select==-1) {
+			for (i=0; i<cars_num; i++) {
+				control_car_raw(i, "quit\n");
+			}
+			return 0;
+		}
 		cin >> vel >> acc >> l_vel >> l_acc >> l_pos;
 
 		if(select == 0) {
